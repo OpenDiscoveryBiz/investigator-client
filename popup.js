@@ -76,6 +76,11 @@ function updateHtml()
                 +" ("+response.official.dkEmployees.date+")";
         }
         extrainfoEl.appendChild(el);
+    } else {
+        var el = document.createElement('p');
+        el.innerHTML = "<b>Number of employees:</b> "
+            +" None registered";
+        extrainfoEl.appendChild(el);
     }
 
     if(response.official.dkStatusTimeline) {
