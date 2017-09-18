@@ -48,7 +48,7 @@ openDiscoveryValidator.prototype.tabStatusBusinessSuccess = 99;
 
 openDiscoveryValidator.prototype.setResolverHost = function(resolverHost) {
     this.resolverHost = resolverHost;
-}
+};
 
 openDiscoveryValidator.prototype.tabsUpdated = function(tabId, changeInfo, tab) {
     if(changeInfo.status == "loading") {
@@ -77,7 +77,7 @@ openDiscoveryValidator.prototype.tabsUpdated = function(tabId, changeInfo, tab) 
         this.tabCompleteDone[tabId] = true;
         this.searchPartDone(tabId);
     }
-}
+};
 
 openDiscoveryValidator.prototype.tabsRemoved = function(tabId, changeInfo, tab) {
     delete this.tabSearchingDone[tabId];
@@ -88,7 +88,7 @@ openDiscoveryValidator.prototype.tabsRemoved = function(tabId, changeInfo, tab) 
     delete this.tabDomain[tabId];
     delete this.tabStatus[tabId];
     delete this.tabMeta[tabId];
-}
+};
 
 openDiscoveryValidator.prototype.searchPartDone = function(tabId) {
     if(this.tabSearchingDone[tabId]) {
@@ -103,12 +103,12 @@ openDiscoveryValidator.prototype.searchPartDone = function(tabId) {
     } else if(this.tabCompleteDone[tabId] && this.tabWellknownDone[tabId]) {
         this.tabStatus[tabId] = this.tabStatusNoBusinessId;
     }
-}
+};
 
 openDiscoveryValidator.prototype.resolveBusinessId = function(tabId, businessId) {
     this.tabStatus[tabId] = this.tabStatusResolving;
     this.lookupResolver(businessId, this.resolverComplete.bind(this, tabId));
-}
+};
 
 openDiscoveryValidator.prototype.resolverComplete = function(tabId, businessId, meta) {
     this.tabMeta[tabId] = meta;
@@ -125,28 +125,41 @@ openDiscoveryValidator.prototype.resolverComplete = function(tabId, businessId, 
         return;
     }
 
-    if(!meta.response.voluntary || !meta.response.voluntary.id) {
+    var found_match = false;
+
+    if(meta.response.official.voluntaryProviders &&
+        Array.isArray(meta.response.official.voluntaryProviders) && (
+            meta.response.official.voluntaryProviders.indexOf('http://'+this.tabDomain[tabId]) > -1 ||
+            meta.response.official.voluntaryProviders.indexOf('https://'+this.tabDomain[tabId]) > -1
+        ) ) {
+        found_match = true;
+    }
+
+    if(meta.response.voluntary && meta.response.voluntary.id) {
+        if (meta.response.voluntary.authzDomains &&
+            Array.isArray(meta.response.voluntary.authzDomains)) {
+            if (meta.response.voluntary.authzDomains.indexOf(this.tabDomain[tabId]) > -1) {
+                found_match = true;
+            } else if (!found_match) {
+                this.tabStatus[tabId] = this.tabStatusVerificationFailed;
+                this.setIcon(tabId, 'grey');
+                return;
+            }
+        } else if (!found_match) {
+            this.tabStatus[tabId] = this.tabStatusMissingAuthzData;
+            this.setIcon(tabId, 'grey');
+            return;
+        }
+    }
+
+    if(found_match) {
+        this.tabStatus[tabId] = this.tabStatusBusinessSuccess;
+        this.setIcon(tabId, 'blue');
+    } else {
         this.tabStatus[tabId] = this.tabStatusMissingVoluntary;
         this.setIcon(tabId, 'grey');
-        return;
     }
-
-    if(!meta.response.voluntary.authzDomains ||
-        !Array.isArray(meta.response.voluntary.authzDomains)) {
-        this.tabStatus[tabId] = this.tabStatusMissingAuthzData;
-        this.setIcon(tabId, 'grey');
-        return;
-    }
-
-    if(meta.response.voluntary.authzDomains.indexOf(this.tabDomain[tabId]) < 0) {
-        this.tabStatus[tabId] = this.tabStatusVerificationFailed;
-        this.setIcon(tabId, 'grey');
-        return;
-    }
-
-    this.tabStatus[tabId] = this.tabStatusBusinessSuccess;
-    this.setIcon(tabId, 'blue');
-}
+};
 
 
 openDiscoveryValidator.prototype.setIcon = function(tabId, color) {
@@ -157,7 +170,7 @@ openDiscoveryValidator.prototype.setIcon = function(tabId, color) {
             '38': 'icons/'+color+'38.png'
         }
     });
-}
+};
 
 openDiscoveryValidator.prototype.webRequestCompleted = function(details) {
     var tabId = details.tabId;
@@ -171,7 +184,7 @@ openDiscoveryValidator.prototype.webRequestCompleted = function(details) {
     }
 
     this.tabHeaderBusinessId[tabId] = businessId;
-}
+};
 
 openDiscoveryValidator.prototype.lookupResolver = function(businessId, callback) {
     var cached = this.resolverCache.get(businessId);
@@ -189,7 +202,7 @@ openDiscoveryValidator.prototype.lookupResolver = function(businessId, callback)
         this.fetchJson(this.resolverHost + "/lookup?version=1&id=" + encodeURIComponent(businessId),
             this.lookupResolverComplete.bind(this, businessId));
     }
-}
+};
 
 openDiscoveryValidator.prototype.lookupResolverComplete = function(businessId, meta) {
     // Cache the response
@@ -211,7 +224,7 @@ openDiscoveryValidator.prototype.lookupResolverComplete = function(businessId, m
     callbacks.forEach(function(callback){
         this.runAsync(callback, businessId, meta);
     }, this);
-}
+};
 
 openDiscoveryValidator.prototype.lookupWellknown = function(domain, callback) {
     var cached = this.wellknownCache.get(domain);
@@ -229,7 +242,7 @@ openDiscoveryValidator.prototype.lookupWellknown = function(domain, callback) {
         this.fetchJson(domain + "/.well-known/opendiscovery/host.json",
             this.lookupWellknownComplete.bind(this, domain));
     }
-}
+};
 
 openDiscoveryValidator.prototype.lookupWellknownComplete = function(domain, meta) {
     // Cache the response
@@ -251,7 +264,7 @@ openDiscoveryValidator.prototype.lookupWellknownComplete = function(domain, meta
     callbacks.forEach(function(callback){
         this.runAsync(callback, domain, meta);
     }, this);
-}
+};
 
 openDiscoveryValidator.prototype.fetchJson = function(url, callback) {
     try {
@@ -267,7 +280,7 @@ openDiscoveryValidator.prototype.fetchJson = function(url, callback) {
     } catch (ex) {
         this.runAsync(callback, {'error': 'exception'});
     }
-}
+};
 
 openDiscoveryValidator.prototype.fetchJsonOnload = function(xhr, callback) {
     if (xhr.status != 200 &&
@@ -282,7 +295,7 @@ openDiscoveryValidator.prototype.fetchJsonOnload = function(xhr, callback) {
     } catch (ex) {
         this.runAsync(callback, {'error': 'exception'});
     }
-}
+};
 
 openDiscoveryValidator.prototype.async = function() {
     var self = this,
@@ -295,7 +308,7 @@ openDiscoveryValidator.prototype.async = function() {
             callback.apply(self, args.concat(callbackargs));
         },0);
     };
-}
+};
 
 openDiscoveryValidator.prototype.runAsync = function() {
     var self = this,
@@ -305,4 +318,4 @@ openDiscoveryValidator.prototype.runAsync = function() {
     setTimeout(function() {
         callback.apply(self, args);
     },0);
-}
+};
