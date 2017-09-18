@@ -177,7 +177,7 @@ openDiscoveryValidator.prototype.webRequestCompleted = function(details) {
 
     var businessId;
     for (var i = 0; i < details.responseHeaders.length; ++i) {
-        if (details.responseHeaders[i].name === 'x-opendiscovery-id') {
+        if (details.responseHeaders[i].name.toLowerCase() === 'x-opendiscovery-id') {
             businessId = details.responseHeaders[i].value;
             break;
         }
